@@ -31,18 +31,8 @@ sql_eng.add(observation)
 sql_eng.flush()
 sql_eng.refresh(observation)
 observation_id = observation.id
-# Handle Directory metadata
-ini_path, ini_name = os.path.split(dir_start)
-dir_obj = Directory(
-    name=ini_name,
-    path=ini_path,
-    observation_id=observation_id
-)
-sql_eng.add(dir_obj)
-sql_eng.flush()
-sql_eng.refresh(dir_obj)
 # Then handle Directory contents
-dir_obj_id = dir_obj.id
+parentlink = {}
 for root, dirs, files in os.walk(dir_start):
     path, dir_name = os.path.split(root)
     dir_obj = Directory(
@@ -50,15 +40,19 @@ for root, dirs, files in os.walk(dir_start):
         path=path,
         observation_id=observation_id
     )
+    try:
+        dir_obj.parent_id = parentlink[path]
+    except KeyError:
+        pass
     sql_eng.add(dir_obj)
     sql_eng.flush()
     sql_eng.refresh(dir_obj)
-    dir_obj_id = dir_obj.id
+    parentlink[root] = dir_obj.id
     for fn in files:
         props = dict(
             name=fn,
             observation_id=observation_id,
-            directory_id=dir_obj_id,
+            directory_id=parentlink[root],
             size=os.path.getsize(os.path.join(root, fn)),
             path=root
         )
