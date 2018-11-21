@@ -4,7 +4,6 @@ This script will collect the inventory of pcloud.
 
 import datetime
 import logging
-import os
 from lib import my_env
 from lib import pcloud_handler
 from lib import sqlstore
@@ -19,7 +18,7 @@ def handle_item(item, directory_id):
     )
     if item["isfolder"]:
         parent_dir_name = dirname_dict["d{pid}".format(pid=item["parentfolderid"])]
-        dirname_dict[item["id"]] = os.path.join(parent_dir_name, item["name"])
+        dirname_dict[item["id"]] = parent_dir_name + "/" + item["name"]
         props["path"] = parent_dir_name
         props["parent_id"] = directory_id
         dirobj = Directory(**props)
