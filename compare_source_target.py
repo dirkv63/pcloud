@@ -127,6 +127,6 @@ target_dir_id = get_directory_id(target_dir, target_obs_id)
 handle_subdirs(source_dir_id, source_obs_id, target_dir_id, target_obs_id)
 with open(os.path.join(cfg["Main"]["logdir"], "pcloud_issues.csv"), "w") as fh:
     for issue in issue_list:
-        fh.write(issue)
+        fh.write(issue + "\n")
 
 logging.info("End application")
