@@ -101,28 +101,28 @@ def handle_subdirs(src_dir_id, src_obs_id, tgt_dir_id, tgt_obs_id):
 parser = argparse.ArgumentParser(
     description="Compare source and target directories."
 )
-parser.add_argument('-s', '--source_dir', type=str, required=True,
-                    help='Please provide the source directory.')
+parser.add_argument('-s', '--source_dir_id', type=int, required=True,
+                    help='Please provide the source directory ID.')
 parser.add_argument('-i', '--source_obs_id', type=int, required=True,
                     help='Please provide the observation id for the source.')
-parser.add_argument('-t', '--target_dir', type=str, required=True,
-                    help='Please provide the target directory.')
+parser.add_argument('-t', '--target_dir_id', type=int, required=True,
+                    help='Please provide the target directory ID.')
 parser.add_argument('-j', '--target_obs_id', type=int, required=True,
                     help='Please provide the observation id for the target.')
 args = parser.parse_args()
 cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")
 logging.info("Arguments: {a}".format(a=args))
-source_dir = args.source_dir
+source_dir_id = args.source_dir_id
 source_obs_id = args.source_obs_id
-target_dir = args.target_dir
+target_dir_id = args.target_dir_id
 target_obs_id = args.target_obs_id
 sql_eng = sqlstore.init_session(cfg["Main"]["db"])
 issue_list = []
 
 # Get source_rec_id
-source_dir_id = get_directory_id(source_dir, source_obs_id)
-target_dir_id = get_directory_id(target_dir, target_obs_id)
+# source_dir_id = get_directory_id(source_dir, source_obs_id)
+# target_dir_id = get_directory_id(target_dir, target_obs_id)
 
 handle_subdirs(source_dir_id, source_obs_id, target_dir_id, target_obs_id)
 with open(os.path.join(cfg["Main"]["logdir"], "pcloud_issues.csv"), "w") as fh:
