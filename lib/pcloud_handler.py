@@ -12,6 +12,7 @@ class PcloudHandler:
     def __init__(self, config_hdl):
         """
         On initialization a connection to pcloud account is done.
+
         :param config_hdl:
         """
         user = config_hdl["Pcloud"]["user"]
@@ -39,6 +40,7 @@ class PcloudHandler:
         """
         This method will return the result of listfolder from root path (/) with recursive flag set, so full directory
         should be returned.
+
         :return:
         """
         params = dict(path="/", recursive=1)
@@ -53,6 +55,26 @@ class PcloudHandler:
         # Status Code OK, so successful login
         res = r.json()
         return res["metadata"]
+
+    def listfolder(self, folderid):
+        """
+        This method will get a folder ID and return json string with folder information.
+
+        :param folderid: ID of the folder for which the info is required
+        :return:
+        """
+        # Todo: merge method with get_contents method.
+        params = dict(folderid=folderid)
+        method = "listfolder"
+        url = self.url_base + method
+        r = self.session.get(url, params=params)
+        if r.status_code != 200:
+            msg = "Could not collect metadata. Status: {s}, reason: {reason}.".format(s=r.status_code, reason=r.reason)
+            logging.critical(msg)
+            raise SystemExit(msg)
+        # Status Code OK, so successful login
+        res = r.json()
+        return res
 
     def logout(self):
         method = "logout"
