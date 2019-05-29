@@ -56,6 +56,26 @@ class PcloudHandler:
         res = r.json()
         return res["metadata"]
 
+    def copyfile(self, fileid, tofolderid):
+        """
+        This method copies a file to a destination folder.
+
+        :param fileid: ID of the file to be copied.
+        :param tofolderid: Target folder.
+        :return:
+        """
+        params = dict(fileid=fileid, tofolderid=tofolderid)
+        method = "copyfile"
+        url = self.url_base + method
+        r = self.session.get(url, params=params)
+        if r.status_code != 200:
+            msg = "Could not copy file. Status: {s}, reason: {reason}.".format(s=r.status_code, reason=r.reason)
+            logging.critical(msg)
+            raise SystemExit(msg)
+        # Status Code OK, so successful login
+        res = r.json()
+        return res
+
     def listfolder(self, folderid):
         """
         This method will get a folder ID and return json string with folder information.
