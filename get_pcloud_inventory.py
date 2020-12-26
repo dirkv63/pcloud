@@ -4,6 +4,8 @@ This script will collect the inventory of pcloud.
 
 import datetime
 import logging
+import time
+from email.utils import parsedate
 from lib import my_env
 from lib import pcloud_handler
 from lib import sqlstore
@@ -34,6 +36,8 @@ def handle_item(item, directory_id):
         props["size"] = item["size"]
         props["hash"] = str(item["hash"])
         props["path"] = dirname_dict["d{pid}".format(pid=item["parentfolderid"])]
+        created = parsedate(item["created"])
+        props["created"] = int(time.mktime(created))
         fileobj = File(**props)
         sql_eng.add(fileobj)
     return

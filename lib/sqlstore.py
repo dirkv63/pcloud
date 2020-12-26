@@ -36,6 +36,7 @@ class File(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, comment="Name of the file (without extension")
     contenttype = Column(Text, comment="Content type of the file")
+    created = Column(Integer, comment="Creation date and time of the file")
     directory_id = Column(Integer, ForeignKey('directories.id'), nullable=False,
                           comment="ID of the directory for the file")
     pcloud_id = Column(Text, comment="pcloud ID if this is a pcloud file")

@@ -19,3 +19,7 @@ pc = pcloud_handler.PcloudHandler(cfg)
 res = pc.listfolder(args.folderid)
 pp = pprint.PrettyPrinter(indent=4)
 pp.pprint(res)
+files = res["metadata"]["contents"]
+for file in files:
+    for k, v in file.items():
+        print("{}: {}".format(k, v))
