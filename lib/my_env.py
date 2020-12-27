@@ -77,7 +77,7 @@ def init_loghandler(modulename):
                                           datefmt='%H:%M:%S')
     # Add Formatter to Console Handler
     ch.setFormatter(formatter_console)
-    logger.addHandler(ch)
+    # logger.addHandler(ch)
     # logging.getLogger('neo4j.bolt').setLevel(logging.WARNING)
     logging.getLogger('httpstream').setLevel(logging.WARNING)
     return logger
