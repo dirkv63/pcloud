@@ -1,3 +1,4 @@
+#!/opt/envs/pcloud/bin/python3
 """
 This script will collect the inventory of pcloud and keeps it in a json file.
 """

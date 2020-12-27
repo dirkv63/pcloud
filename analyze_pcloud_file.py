@@ -1,3 +1,4 @@
+#!/opt/envs/pcloud/bin/python3
 """
 This script will analyze the inventory of pcloud.
 """
@@ -59,16 +60,21 @@ for k in pc_current:
         new_items.append(k)
 for k in pc_prev:
     if k not in pc_current: removed_items.append(k)
-report = [f'<h3>New: {len(new_items)} items</h3>']
+report = f'<h3>New: {len(new_items)} items</h3>'
+report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Created</th></tr>'
 for k in new_items:
-    report.append(f"{k}\t - Created: {pc_current[k]['created']}")
-report.append(f'<h3>Modified: {len(modified_items)} items</h3>')
+    report += f'<tr><td>{k}</td><td>{pc_current[k]["created"][:-6]}</td></tr>'
+report += '</table>'
+report += f'<h3>Modified: {len(modified_items)} items</h3>'
+report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Modified</th></tr>'
 for k in modified_items:
-    report.append(f"{k}\t - Modified: {pc_current[k]['modified']}")
-report.append(f'<h3>Removed: {len(removed_items)} items</h3>')
+    report += f'<tr><td>{k}</td><td>{pc_current[k]["modified"][:-6]}</td></tr>'
+report += '</table>'
+report += f'<h3>Removed: {len(removed_items)} items</h3>'
+report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Modified</th></tr>'
 for k in removed_items:
-    report.append(f"{k}\t - Modified: {pc_prev[k]['modified']}")
-# print('</br>'.join(report))
+    report += f'<tr><td>{k}</td><td>{pc_prev[k]["modified"][:-6]}</td></tr>'
+report += '</table>'
 
 gmail_user = os.getenv('GMAIL_USER')
 gmail_pwd = os.getenv('GMAIL_PWD')
@@ -79,8 +85,7 @@ msg["Subject"] = "PCloud Report"
 msg["From"] = gmail_user
 msg["To"] = recipient
 
-body = '</br>'.join(report)
-msg.attach(MIMEText(body, 'html'))
+msg.attach(MIMEText(report, 'html'))
 
 smtp_server = os.getenv('SMTP_SERVER')
 smtp_port = os.getenv('SMTP_PORT')
