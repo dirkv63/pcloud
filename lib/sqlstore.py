@@ -72,7 +72,7 @@ class DirectConn:
         """
         To drop a database in sqlite3, you need to delete the file.
         """
-        self.db = config['Main']['db']
+        self.db = os.getenv('DB')
         self.dbConn = ""
         self.cur = ""
 
@@ -182,6 +182,7 @@ class DirectConn:
 def init_session(db, echo=False):
     """
     This function configures the connection to the database and returns the session object.
+
     :param db: Name of the sqlite3 database.
     :param echo: True / False, depending if echo is required. Default: False
     :return: session object.

@@ -1,15 +1,13 @@
 """
-This script will compare a source and a target directory. Starting from a source directory and observation id and a
-target directory and observation id, the script checks if every directory and file in source are also in target. Files
-need to have same size.
+This script will compare activity on PCloud related to the two most recent observations. This can be used to get daily
+activity reports.
 """
 
-import argparse
 import logging
 import os
 from lib import my_env
 from lib import sqlstore
-from lib.sqlstore import Directory, File
+from lib.sqlstore import Directory, File, Observation
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 
@@ -98,26 +96,18 @@ def handle_subdirs(src_dir_id, src_obs_id, tgt_dir_id, tgt_obs_id):
             handle_subdirs(subdir.id, subdir.observation_id, target_subdir.id, target_subdir.observation_id)
 
 
-parser = argparse.ArgumentParser(
-    description="Compare source and target directories."
-)
-parser.add_argument('-s', '--source_dir_id', type=int, required=True,
-                    help='Please provide the source directory ID.')
-parser.add_argument('-i', '--source_obs_id', type=int, required=True,
-                    help='Please provide the observation id for the source.')
-parser.add_argument('-t', '--target_dir_id', type=int, required=True,
-                    help='Please provide the target directory ID.')
-parser.add_argument('-j', '--target_obs_id', type=int, required=True,
-                    help='Please provide the observation id for the target.')
-args = parser.parse_args()
 cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")
-logging.info("Arguments: {a}".format(a=args))
-source_dir_id = args.source_dir_id
-source_obs_id = args.source_obs_id
-target_dir_id = args.target_dir_id
-target_obs_id = args.target_obs_id
 sql_eng = sqlstore.init_session(os.getenv('DB'))
+obs_query = sql_eng.query(Observation).filter_by(remark='PCloud Inventory').order_by(Observation.timestamp.desc())
+obs_res = obs_query.limit(2).all()
+source_obs_id = obs_res[0].id
+target_obs_id = obs_res[1].id
+dir_query = sql_eng.query(Directory).filter_by(parent_id=None)
+dir_source = dir_query.filter_by(observation_id=source_obs_id).one()
+dir_target = dir_query.filter_by(observation_id=target_obs_id).one()
+source_dir_id = dir_source.id
+target_dir_id = dir_target.id
 issue_list = []
 
 # Get source_rec_id

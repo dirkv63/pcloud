@@ -15,7 +15,7 @@ parser.add_argument('-i', '--folderid', type=str, required=True,
                     help='Please provide the folder ID.')
 args = parser.parse_args()
 cfg = my_env.init_env("pcloud", __file__)
-pc = pcloud_handler.PcloudHandler(cfg)
+pc = pcloud_handler.PcloudHandler()
 res = pc.listfolder(args.folderid)
 pp = pprint.PrettyPrinter(indent=4)
 pp.pprint(res)

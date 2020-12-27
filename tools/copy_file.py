@@ -16,7 +16,7 @@ parser.add_argument('-t', '--target', type=str, required=True,
                     help='Please provide the folder ID.')
 args = parser.parse_args()
 cfg = my_env.init_env("pcloud", __file__)
-pc = pcloud_handler.PcloudHandler(cfg)
+pc = pcloud_handler.PcloudHandler()
 
 res = pc.copyfile(args.fileid, args.target)
 pp = pprint.PrettyPrinter(indent=4)

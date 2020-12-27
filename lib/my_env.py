@@ -1,7 +1,7 @@
 """
 This module consolidates all local configuration for the script, including modulename collection for logfile name
 setup and initializing the config file.
-Also other utilities find their home here.
+Also some application specific utilities find their home here.
 """
 
 import configparser
@@ -12,6 +12,7 @@ import platform
 import sys
 import subprocess
 from datetime import datetime
+from dotenv import load_dotenv
 
 
 def init_env(projectname, filename):
@@ -21,10 +22,9 @@ def init_env(projectname, filename):
     :param filename: Filename (__file__) of the calling script (for logfile).
     :return: config handle
     """
-    projectname = projectname
     modulename = get_modulename(filename)
     config = get_inifile(projectname)
-    my_log = init_loghandler(config, modulename)
+    my_log = init_loghandler(modulename)
     my_log.info('Start Application')
     return config
 
@@ -32,6 +32,7 @@ def init_env(projectname, filename):
 def get_modulename(scriptname):
     """
     Modulename is required for logfile and for properties file.
+
     :param scriptname: Name of the script for which modulename is required. Use __file__.
     :return: Module Filename from the calling script.
     """
@@ -41,29 +42,26 @@ def get_modulename(scriptname):
     return module
 
 
-def init_loghandler(config, modulename):
+def init_loghandler(modulename):
     """
     This function initializes the loghandler. Logfilename consists of calling module name + computername.
-    Logfile directory is read from the project .ini file.
     Format of the logmessage is specified in basicConfig function.
-    This is for Log Handler configuration. If basic log file configuration is required, then use init_logfile.
-    :param config: Reference to the configuration ini file. Directory for logfile should be in section Main entry
-    logdir.
+
     :param modulename: The name of the module. Each module will create it's own logfile.
     :return: Log Handler
     """
-    logdir = config['Main']['logdir']
-    loglevel = config['Main']['loglevel'].upper()
-    computername = platform.node()
+    logdir = os.getenv("LOGDIR")
+    loglevel = os.getenv("LOGLEVEL").upper()
     # Define logfileName
-    logfile = logdir + "/" + modulename + "_" + computername + ".log"
+    logfn = "{module}_{host}.log".format(module=modulename, host=platform.node())
+    logfile = os.path.join(logdir, logfn)
     # Configure the root logger
     logger = logging.getLogger()
     level = logging.getLevelName(loglevel)
     logger.setLevel(level)
     # Get logfiles of 1M
     maxbytes = 1024 * 1024
-    rfh = logging.handlers.RotatingFileHandler(logfile, maxBytes=maxbytes, backupCount=5)
+    rfh = logging.handlers.RotatingFileHandler(logfile, maxBytes=maxbytes, backupCount=5, encoding='utf8')
     # Create Formatter for file
     formatter_file = logging.Formatter(fmt='%(asctime)s|%(module)s|%(funcName)s|%(lineno)d|%(levelname)s|%(message)s',
                                        datefmt='%d/%m/%Y|%H:%M:%S')
@@ -80,11 +78,7 @@ def init_loghandler(config, modulename):
     # Add Formatter to Console Handler
     ch.setFormatter(formatter_console)
     logger.addHandler(ch)
-    """
-    for key in logging.Logger.manager.loggerDict.keys():
-        print("Key: {key}".format(key=key))
-    """
-    logging.getLogger('neo4j.bolt').setLevel(logging.WARNING)
+    # logging.getLogger('neo4j.bolt').setLevel(logging.WARNING)
     logging.getLogger('httpstream').setLevel(logging.WARNING)
     return logger
 
@@ -93,34 +87,29 @@ def get_inifile(projectname):
     """
     Read Project configuration ini file in subdirectory properties. Config ini filename is the projectname.
     The ini file is located in the properties module, which is sibling of the lib module.
+    Environment settings defined in .env file are exported as well. The .env file needs to be in the project main
+    directory.
 
     :param projectname: Name of the project.
-
     :return: Object reference to the inifile.
     """
     # Use Project Name as ini file.
-    # TODO: review procedure to get directory name instead of relative properties/ path.
-    if getattr(sys, 'frozen', False):
-        # Running Frozen (pyinstaller executable)
-        configfile = projectname + ".ini"
-    else:
-        # Running Live
-        # properties directory is sibling of lib directory.
-        (filepath_lib, _) = os.path.split(__file__)
-        (filepath, _) = os.path.split(filepath_lib)
-        # configfile = filepath + "/properties/" + projectname + ".ini"
-        configfile = os.path.join(filepath, 'properties', "{p}.ini".format(p=projectname))
+    # Running Live
+    # properties directory is sibling of lib directory.
+    (filepath_lib, _) = os.path.split(__file__)
+    (filepath, _) = os.path.split(filepath_lib)
+    # configfile = filepath + "/properties/" + projectname + ".ini"
+    configfile = os.path.join(filepath, 'properties', "{p}.ini".format(p=projectname))
     ini_config = configparser.ConfigParser()
     try:
         f = open(configfile)
         ini_config.read_file(f)
         f.close()
     except FileNotFoundError:
-        e = sys.exc_info()[1]
-        ec = sys.exc_info()[0]
-        log_msg = "Read Inifile not successful: %s (%s)"
-        print(log_msg % (e, ec))
-        sys.exit(1)
+        # If no Config file defined, then return empty dictionary.
+        ini_config = {}
+    envfile = os.path.join(filepath, ".env")
+    load_dotenv(dotenv_path=envfile)
     return ini_config
 
 
@@ -129,17 +118,14 @@ def run_script(path, script_name, *args):
     This function will run a python script with arguments.
 
     :param path: Full path to the script.
-
     :param script_name: Name of the script. Include .py if this is the script extension.
-
     :param args: List of script arguments.
-
     :return:
     """
     script_path = os.path.join(path, script_name)
     cmd = [sys.executable, script_path] + list(args)
-    # logging.info(cmd)
-    subprocess.call(cmd, env=os.environ.copy())
+    logging.debug(cmd)
+    subprocess.run(cmd, env=os.environ.copy())
     return
 
 
@@ -152,6 +138,7 @@ class LoopInfo:
         """
         Initialization of FOR loop information handling. Start message is printed for attribname. Information progress
         message will be printed for every triggercnt iterations.
+
         :param attribname:
         :param triggercnt:
         :return:
@@ -181,4 +168,4 @@ class LoopInfo:
     def end_loop(self):
         curr_time = datetime.now().strftime("%H:%M:%S")
         print("{0} - {1} {2} handled - End.\n".format(curr_time, str(self.rec_cnt), str(self.attribname)))
-        return
+        return self.rec_cnt

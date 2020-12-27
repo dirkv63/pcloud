@@ -4,6 +4,7 @@ This script will collect the inventory of pcloud.
 
 import datetime
 import logging
+import os
 import time
 from email.utils import parsedate
 from lib import my_env
@@ -45,7 +46,7 @@ def handle_item(item, directory_id):
 
 cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")
-sql_eng = sqlstore.init_session(cfg["Main"]["db"])
+sql_eng = sqlstore.init_session(os.getenv('DB'))
 now = datetime.datetime.now()
 observation = Observation(
     timestamp=now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -55,7 +56,7 @@ sql_eng.add(observation)
 sql_eng.flush()
 sql_eng.refresh(observation)
 observation_id = observation.id
-pc = pcloud_handler.PcloudHandler(cfg)
+pc = pcloud_handler.PcloudHandler()
 res = pc.get_contents()
 # Handle Directory metadata
 dir_obj = Directory(

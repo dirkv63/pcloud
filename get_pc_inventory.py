@@ -21,7 +21,7 @@ cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")
 logging.info("Arguments: {a}".format(a=args))
 dir_start = args.directory
-sql_eng = sqlstore.init_session(cfg["Main"]["db"])
+sql_eng = sqlstore.init_session(os.getenv('DB'))
 now = datetime.datetime.now()
 observation = Observation(
     timestamp=now.strftime("%Y-%m-%d %H:%M:%S"),
