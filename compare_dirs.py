@@ -1,15 +1,14 @@
 #!/opt/envs/pcloud/bin/python3
 """
-This script compares a directory on PCloud with a directory on the local host..
+This script compares a directory on PCloud with a directory on the local host. A report is created with the differences.
 """
 
 import argparse
 import json
 import logging
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import datetime
+import webbrowser
 from lib import my_env
 from pprint import pprint
 
@@ -19,7 +18,9 @@ def item2key(pc_dict, path, contents):
         fn = f"{path}/{item['name']}"
         if item['isfolder']:
             if source_dir in fn:
-                pc_dict[fn] = dict(
+                key = fn.replace(source_dir, target_dir)
+                pc_dict[key] = dict(
+                    fn=fn,
                     isfolder=item['isfolder'],
                     created=item['created'],
                     modified=item['modified']
@@ -27,7 +28,9 @@ def item2key(pc_dict, path, contents):
             item2key(pc_dict, f"{path}/{item['name']}", item['contents'])
         else:
             if source_dir in fn:
-                pc_dict[fn] = dict(
+                key = fn.replace(source_dir, target_dir)
+                pc_dict[key] = dict(
+                    fn=fn,
                     isfolder=item['isfolder'],
                     created=item['created'],
                     modified=item['modified'],
@@ -41,12 +44,14 @@ def item2key(pc_dict, path, contents):
 
 def get_local_pc(local_dict, local_path):
     for root, dirs, files in os.walk(local_path):
-        fn = root
         local_dict[root] = dict(isfolder=True)
         for file in files:
-            local_dict[file] = dict(
+            key = os.path.join(root,file)
+            local_dict[key] = dict(
                 isfolder=False,
-                size=os.path.getsize(os.path.join(root, file))
+                size=os.path.getsize(os.path.join(root, file)),
+                modified=datetime.datetime.fromtimestamp(int(os.path.getmtime(os.path.join(root, file))))
+                    .strftime("%Y-%m-%d %H:%M:%S")
             )
     return
 
@@ -62,6 +67,7 @@ cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")
 logging.info("Arguments: {a}".format(a=args))
 source_dir = args.source_dir
+target_dir = args.target_dir
 pc_tree = {}
 fp = os.getenv('DATADIR')
 inventory_files = [file for file in os.listdir(fp) if '.json' == file[-len('.json'):]]
@@ -72,54 +78,35 @@ with open(os.path.join(fp, ffn_current), 'r') as fh:
 item2key(pc_tree, pc_contents['path'], pc_contents['contents'])
 pprint(pc_tree)
 local_tree = {}
-get_local_pc(local_tree, args.target_dir)
+get_local_pc(local_tree, target_dir)
 pprint(local_tree)
-raise Exception('OK for Now')
 new_items = []
 modified_items = []
 removed_items = []
-for k in pc_current:
-    if k in pc_prev:
-        if 'hash' in pc_current[k] and pc_current[k]['hash'] != pc_prev[k]['hash']: modified_items.append(k)
+for k in pc_tree:
+    if k in local_tree:
+        if 'size' in pc_tree[k] and pc_tree[k]['size'] != local_tree[k]['size']: modified_items.append(k)
     else:
         new_items.append(k)
-for k in pc_prev:
-    if k not in pc_current: removed_items.append(k)
-report = f'<h3>New: {len(new_items)} items</h3>'
+for k in local_tree:
+    if k not in pc_tree: removed_items.append(k)
+report = f'<html><body><h3>New: {len(new_items)} items</h3>'
 report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Created</th></tr>'
 for k in new_items:
-    report += f'<tr><td>{k}</td><td>{pc_current[k]["created"][:-6]}</td></tr>'
+    report += f'<tr><td>{k}</td><td>{pc_tree[k]["created"][:-6]}</td></tr>'
 report += '</table>'
 report += f'<h3>Modified: {len(modified_items)} items</h3>'
 report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Modified</th></tr>'
 for k in modified_items:
-    report += f'<tr><td>{k}</td><td>{pc_current[k]["modified"][:-6]}</td></tr>'
+    report += f'<tr><td>{k}</td><td>{pc_tree[k]["modified"][:-6]}</td></tr>'
 report += '</table>'
 report += f'<h3>Removed: {len(removed_items)} items</h3>'
 report += '<table border="1" cellpadding="4"><tr><th>File</th><th>Modified</th></tr>'
 for k in removed_items:
-    report += f'<tr><td>{k}</td><td>{pc_prev[k]["modified"][:-6]}</td></tr>'
-report += '</table>'
-
-gmail_user = os.getenv('GMAIL_USER')
-gmail_pwd = os.getenv('GMAIL_PWD')
-recipient = os.getenv('RECIPIENT')
-
-msg = MIMEMultipart()
-msg["Subject"] = "PCloud Report"
-msg["From"] = gmail_user
-msg["To"] = recipient
-
-msg.attach(MIMEText(report, 'html'))
-
-smtp_server = os.getenv('SMTP_SERVER')
-smtp_port = os.getenv('SMTP_PORT')
-server = smtplib.SMTP(smtp_server, smtp_port)
-server.starttls()
-server.login(gmail_user, gmail_pwd)
-text = msg.as_string()
-server.sendmail(gmail_user, recipient, text)
-logging.debug("Mail sent!")
-server.quit()
-
+    report += f'<tr><td>{k}</td><td>{local_tree[k]["modified"]}</td></tr>'
+report += '</table></body></html>'
+ffn = os.path.join(fp, 'report.html')
+with open(ffn,'w') as fh:
+    fh.write(report)
+webbrowser.open(ffn)
 logging.info("End application")
