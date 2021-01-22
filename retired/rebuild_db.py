@@ -4,7 +4,7 @@ This procedure will rebuild the sqlite database
 
 import logging
 from lib import my_env
-from lib import sqlstore
+from retired import sqlstore
 
 cfg = my_env.init_env("pcloud", __file__)
 logging.info("Start application")

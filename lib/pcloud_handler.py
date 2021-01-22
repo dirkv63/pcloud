@@ -2,7 +2,7 @@ import datetime
 import logging
 import os
 import requests
-import pathlib
+from pathlib import Path
 
 class PcloudHandler:
 
@@ -165,6 +165,31 @@ class PcloudHandler:
                 msg = "Logout not successful, status code: {status}".format(status=r.status_code)
             logging.info(msg)
 
+def convert_fn(fn, pcloud_root, local_root):
+    """
+    This function accepts a tuple of PCloud File parts and returns the Local Filename.
+    
+    :param fn: Filename (directoryname) as discovered in Pcloud
+    :param pcloud_root: PCloud root directory.
+    :param local_root: Local Target root directory.
+    :return: Filename (directoryname) on the local target as a string.
+    """
+    fn_parts = list(Path(fn).parts)
+    pcloud_parts = list(Path(pcloud_root).parts)
+    local_parts = list(Path(local_root).parts)
+    # Replace PCloud anchor with Local anchor
+    pcloud_parts[0] = local_parts[0]
+    # Verify that pcloud_parts is in fn_parts, so File is in scope
+    if (len(fn_parts) >= len(pcloud_parts)) and (fn_parts[0:len(pcloud_parts)] == pcloud_parts):
+        fn_naked = fn_parts[len(pcloud_parts):]
+        fn_newparts = local_parts + fn_naked
+        fn_new = Path(*fn_newparts)
+        logging.debug(f"Source: {fn} - Target: {fn_new}")
+        return str(fn_new)
+    else:
+        # logging.error(f"File {fn} is not in scope of PCloud {pcloud_root}")
+        return False
+
 def get_file(url, ffn):
     """
     This function gets a file from URL url and keeps it on location in ffn.
@@ -173,7 +198,7 @@ def get_file(url, ffn):
     :param ffn:
     :return: True if file has been downloaded, False otherwise
     """
-    ffn_obj = pathlib.Path(ffn)
+    ffn_obj = Path(ffn)
     ffn_path = ffn_obj.parent
     fn = ffn_obj.name
     print(f"Path: {ffn_path} - File: {fn}")
@@ -191,44 +216,47 @@ def get_file(url, ffn):
             handle.write(block)
 
 
-def item2key(parent_dir, local_dir, pcloud_dict, path, contents):
+def item2key(pcloud_dict, path, contents, parent_dir=None, local_dir=None):
     """
     Recursive function to reduce the PCloud inventory and convert the directories and files in scope into a dictionary.
     Files are added as keys to the dictionary, Directories are further explored by calling this function again.
 
-    :param parent_dir: PCloud Parent directory to start sync process.
-    :param local_dir: Directory on the local PC that is target directory.
     :param pcloud_dict: Dictionary containing Directories and Files in scope for the sync process. The dictionary is
     created in the recursive process.
     :param path: Current path under investigation
     :param contents: Directories and files in scope for the sync process.
+    :param parent_dir: PCloud Parent directory to start sync process. If None, comparing current and previous pcloud
+    inventory.
+    :param local_dir: Directory on the local PC that is target directory. If None, comparing current and previous pcloud
+    inventory.
     :return: nothing - the information is build in the pcloud_dict dictionary.
     """
     for item in contents:
-        fn = f"{path}/{item['name']}"
+        fn = Path(path).joinpath(item['name'])
+        if parent_dir:
+            key = convert_fn(fn, parent_dir, local_dir)
+        else:
+            key = fn
         if item['isfolder']:
-            if parent_dir in fn:
-                key = fn.replace(parent_dir, local_dir)
+            if key:
                 pcloud_dict[key] = dict(
                     fn=fn,
                     isfolder=item['isfolder'],
                     created=item['created'],
                     modified=item['modified']
                 )
-            item2key(parent_dir, local_dir, pcloud_dict, f"{path}/{item['name']}", item['contents'])
-        else:
-            if parent_dir in fn:
-                key = fn.replace(parent_dir, local_dir)
-                pcloud_dict[key] = dict(
-                    fn=fn,
-                    isfolder=item['isfolder'],
-                    created=item['created'],
-                    modified=item['modified'],
-                    fileid=item['fileid'],
-                    size=item['size'],
-                    hash=item['hash'],
-                    contenttype=item['contenttype']
-                )
+            item2key(pcloud_dict, fn, item['contents'], parent_dir, local_dir)
+        elif key:
+            pcloud_dict[key] = dict(
+                fn=fn,
+                isfolder=item['isfolder'],
+                created=item['created'],
+                modified=item['modified'],
+                fileid=item['fileid'],
+                size=item['size'],
+                hash=item['hash'],
+                contenttype=item['contenttype']
+            )
     return
 
 def get_local_contents(local_path):
@@ -240,7 +268,10 @@ def get_local_contents(local_path):
     """
     local_dict = {}
     for root, dirs, files in os.walk(local_path):
-        local_dict[root] = dict(isfolder=True)
+        local_dict[root] = dict(
+            isfolder=True,
+            modified=datetime.datetime.fromtimestamp(int(os.path.getmtime(root))).strftime("%Y-%m-%d %H:%M:%S")
+        )
         for file in files:
             key = os.path.join(root, file)
             local_dict[key] = dict(

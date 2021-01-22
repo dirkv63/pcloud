@@ -8,8 +8,8 @@ import argparse
 import logging
 import os
 from lib import my_env
-from lib import sqlstore
-from lib.sqlstore import Directory, File
+from retired import sqlstore
+from retired.sqlstore import Directory, File
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 

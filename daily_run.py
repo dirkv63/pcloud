@@ -10,7 +10,7 @@ from lib import my_env
 from lib.my_env import run_script
 
 scripts = [
-    "get_pcloud_file",
+    "get_pcloud_inventory",
     "analyze_pcloud_file"
 ]
 

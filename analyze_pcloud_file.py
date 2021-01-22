@@ -10,6 +10,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from lib import my_env
+from lib import pcloud_handler
 
 
 def item2key(pc_dict, path, contents):
@@ -45,11 +46,11 @@ inventory_files.sort(reverse=True)
 # ffn = '/home/dirk/development/python/pcloud/data/pcloud20201227161239.json'
 with open(os.path.join(fp, ffn_current), 'r') as fh:
     pc_contents = json.load(fh)
-item2key(pc_current, pc_contents['path'], pc_contents['contents'])
+pcloud_handler.item2key(pc_current, pc_contents['path'], pc_contents['contents'])
 # ffn = '/home/dirk/development/python/pcloud/data/pcloud20201227144214.json'
 with open(os.path.join(fp, ffn_prev), 'r') as fh:
     pc_contents = json.load(fh)
-item2key(pc_prev, pc_contents['path'], pc_contents['contents'])
+pcloud_handler.item2key(pc_prev, pc_contents['path'], pc_contents['contents'])
 new_items = []
 modified_items = []
 removed_items = []

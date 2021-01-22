@@ -6,8 +6,8 @@ activity reports.
 import logging
 import os
 from lib import my_env
-from lib import sqlstore
-from lib.sqlstore import Directory, File, Observation
+from retired import sqlstore
+from retired.sqlstore import Directory, File, Observation
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 

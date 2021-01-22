@@ -18,6 +18,8 @@ parser.add_argument('-s', '--source_dir', type=str, required=True,
                     help='Please provide the PCloud source directory.')
 parser.add_argument('-t', '--target_dir', type=str, required=True,
                     help='Please provide the Local target directory ID.')
+parser.add_argument('-a', '--action', type=str, required=False, default='view', choices=['view', 'run'],
+                    help='Please provide the action: view changes or run to synchronize target with source')
 args = parser.parse_args()
 cfg = my_env.init_env("pcloud", __file__)
 pc = pcloud_handler.PcloudHandler()
@@ -33,7 +35,7 @@ inventory_files.sort(reverse=True)
 ffn_current = inventory_files[0]
 with open(os.path.join(fp, ffn_current), 'r') as fh:
     pcloud_contents = json.load(fh)
-pcloud_handler.item2key(source_dir, target_dir, pcloud_tree, pcloud_contents['path'], pcloud_contents['contents'])
+pcloud_handler.item2key(pcloud_tree, pcloud_contents['path'], pcloud_contents['contents'], source_dir, target_dir)
 local_tree = pcloud_handler.get_local_contents(target_dir)
 new_items = []
 modified_items = []
@@ -64,9 +66,11 @@ ffn = os.path.join(fp, 'report.html')
 with open(ffn,'w') as fh:
     fh.write(report)
 webbrowser.open(ffn)
-for k in new_items + modified_items:
-    if not pcloud_tree[k]['isfolder']:
-        pcloud_handler.get_file(pc.get_filelink(pcloud_tree[k]['fileid']), k)
-        logging.info(f"File {k} Contents: {pcloud_tree[k]}")
+
+if args.action == 'run':
+    for k in new_items + modified_items:
+        if not pcloud_tree[k]['isfolder']:
+            pcloud_handler.get_file(pc.get_filelink(pcloud_tree[k]['fileid']), k)
+            logging.info(f"File {k} Contents: {pcloud_tree[k]}")
 
 logging.info("End application")
