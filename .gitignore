@@ -14,3 +14,5 @@
 __pycache__/
 properties/*
 data/*
+logs/*
+.env

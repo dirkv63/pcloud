@@ -10,6 +10,7 @@ import logging
 import os
 import webbrowser
 from lib import my_env, pcloud_handler
+from pathlib import Path
 
 parser = argparse.ArgumentParser(
     description="Compare source (PCloud) and target (Local) directories."
@@ -69,7 +70,9 @@ webbrowser.open(ffn)
 
 if args.action == 'run':
     for k in new_items + modified_items:
-        if not pcloud_tree[k]['isfolder']:
+        if pcloud_tree[k]['isfolder']:
+            Path(k).mkdir(parents=True, exist_ok=True)
+        else:
             pcloud_handler.get_file(pc.get_filelink(pcloud_tree[k]['fileid']), k)
             logging.info(f"File {k} Contents: {pcloud_tree[k]}")
 

@@ -2,10 +2,10 @@ import datetime
 import logging
 import os
 import requests
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+
 
 class PcloudHandler:
-
     """
     This class consolidates the pcloud functionality. On initialization a connection to pcloud account is set.
     List method allows to list all files in the specified folder. Logout method will close the connection.
@@ -32,7 +32,7 @@ class PcloudHandler:
         self.auth = res["auth"]
         usedquota = res["usedquota"]
         quota = res["quota"]
-        pct = (usedquota/quota)*100
+        pct = (usedquota / quota) * 100
         msg = "{pct:.2f}% used.".format(pct=pct)
         logging.info(msg)
 
@@ -105,7 +105,7 @@ class PcloudHandler:
         res = self.get_fileinfo(fileid)
         url = f"https://{res['hosts'][0]}{res['path']}"
         logging.debug(f"URL: {url}")
-        return  url
+        return url
 
     def downloadfile(self, url, path, target):
         """
@@ -165,22 +165,27 @@ class PcloudHandler:
                 msg = "Logout not successful, status code: {status}".format(status=r.status_code)
             logging.info(msg)
 
+
 def convert_fn(fn, pcloud_root, local_root):
     """
     This function accepts a tuple of PCloud File parts and returns the Local Filename.
     
-    :param fn: Filename (directoryname) as discovered in Pcloud
-    :param pcloud_root: PCloud root directory.
-    :param local_root: Local Target root directory.
-    :return: Filename (directoryname) on the local target as a string.
+    :param fn: Filename (or directory name) as discovered in Pcloud, so get PurePosixPath parts.
+    :param pcloud_root: PCloud root directory - use PurePosixPath parts.
+    :param local_root: Local Target root directory - use local machine Path parts.
+    :return: Filename (directory name) on the local target as a string - use local machine Path parts.
     """
-    fn_parts = list(Path(fn).parts)
-    pcloud_parts = list(Path(pcloud_root).parts)
+    fn_parts = list(PurePosixPath(fn).parts)
+    pcloud_parts = list(PurePosixPath(pcloud_root).parts)
     local_parts = list(Path(local_root).parts)
     # Replace PCloud anchor with Local anchor
     pcloud_parts[0] = local_parts[0]
     # Verify that pcloud_parts is in fn_parts, so File is in scope
-    if (len(fn_parts) >= len(pcloud_parts)) and (fn_parts[0:len(pcloud_parts)] == pcloud_parts):
+    # Compare without anchor
+    fn_comp = fn_parts[1:]
+    pcloud_comp = pcloud_parts[1:]
+    logging.debug(f"For File {fn} Compare Parts {fn_comp} with Root {pcloud_comp}")
+    if (len(fn_comp) >= len(pcloud_comp)) and (fn_comp[0:len(pcloud_comp)] == pcloud_comp):
         fn_naked = fn_parts[len(pcloud_parts):]
         fn_newparts = local_parts + fn_naked
         fn_new = Path(*fn_newparts)
@@ -189,6 +194,7 @@ def convert_fn(fn, pcloud_root, local_root):
     else:
         # logging.error(f"File {fn} is not in scope of PCloud {pcloud_root}")
         return False
+
 
 def get_file(url, ffn):
     """
@@ -201,7 +207,7 @@ def get_file(url, ffn):
     ffn_obj = Path(ffn)
     ffn_path = ffn_obj.parent
     fn = ffn_obj.name
-    print(f"Path: {ffn_path} - File: {fn}")
+    logging.info(f"Get path: {ffn_path} - File: {fn}")
     ffn_path.mkdir(parents=True, exist_ok=True)
     with open(ffn, 'wb') as handle:
         r = requests.get(url, stream=True)
@@ -210,7 +216,7 @@ def get_file(url, ffn):
             logging.critical(msg)
             raise SystemExit(msg)
         # Chunk size should be at least 1MB, to avoid switching getting content and writing to disk.
-        for block in r.iter_content(chunk_size=1024*1024):
+        for block in r.iter_content(chunk_size=1024 * 1024):
             if not block:
                 break
             handle.write(block)
@@ -232,7 +238,7 @@ def item2key(pcloud_dict, path, contents, parent_dir=None, local_dir=None):
     :return: nothing - the information is build in the pcloud_dict dictionary.
     """
     for item in contents:
-        fn = Path(path).joinpath(item['name'])
+        fn = PurePosixPath(path).joinpath(item['name'])
         if parent_dir:
             key = convert_fn(fn, parent_dir, local_dir)
         else:
@@ -259,6 +265,7 @@ def item2key(pcloud_dict, path, contents, parent_dir=None, local_dir=None):
             )
     return
 
+
 def get_local_contents(local_path):
     """
     This function collects directories and files on the local device.
@@ -278,6 +285,6 @@ def get_local_contents(local_path):
                 isfolder=False,
                 size=os.path.getsize(os.path.join(root, file)),
                 modified=datetime.datetime.fromtimestamp(int(os.path.getmtime(os.path.join(root, file))))
-                    .strftime("%Y-%m-%d %H:%M:%S")
+                .strftime("%Y-%m-%d %H:%M:%S")
             )
     return local_dict
